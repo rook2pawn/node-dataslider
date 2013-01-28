@@ -78,6 +78,9 @@ var DataSlider = function(params) {
             panorama.selectchange = cb;
         }
     }
+    this.draw = function() {
+        panorama.selectchange({data:{left:0,right:46}},loaded_data);
+    };
 };
 
 exports = module.exports = DataSlider;

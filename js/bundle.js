@@ -551,6 +551,9 @@ var DataSlider = function(params) {
             panorama.selectchange = cb;
         }
     }
+    this.draw = function() {
+        panorama.selectchange({data:{left:0,right:46}},loaded_data);
+    }
 };
 
 exports = module.exports = DataSlider;
@@ -684,7 +687,7 @@ exports = module.exports = Panorama;
 require.define("/lib/selector.js",function(require,module,exports,__dirname,__filename,process){var Selector = function(params) {
     var config = {
         left:{pos:0,status:'normal',width:7},
-        right:{pos:85,status:'normal',width:7},
+        right:{pos:46,status:'normal',width:7},
         middle:{status:'normal',startx:undefined,endx:undefined}
     };
     if (params === undefined)
@@ -844,6 +847,7 @@ $(window).ready(function() {
     var basesize = 48;
     dataslider.to(canvas);
     dataslider.onchange(function(params,data) {
+        console.log(arguments);
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
@@ -874,6 +878,7 @@ $(window).ready(function() {
         ctx.font = basesize + "px Courier";
         ctx.fillText(data,0,basesize-10);
     });
+    dataslider.draw();
 //    dataslider.listen(newdatasource)
 });
 });

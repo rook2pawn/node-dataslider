@@ -10,6 +10,7 @@ $(window).ready(function() {
     var basesize = 48;
     dataslider.to(canvas);
     dataslider.onchange(function(params,data) {
+        console.log(arguments);
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
@@ -40,5 +41,6 @@ $(window).ready(function() {
         ctx.font = basesize + "px Courier";
         ctx.fillText(data,0,basesize-10);
     });
+    dataslider.draw();
 //    dataslider.listen(newdatasource)
 });
