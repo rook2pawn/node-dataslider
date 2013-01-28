@@ -476,34 +476,22 @@ var Panorama = require('./lib/panorama');
 var Selector = require('./lib/selector');
 
 var DataSlider = function(params) {
-
     if (params === undefined)
         var params = {}
-    var canvas = undefined;
-    var selector_canvas = undefined;
-    var ctx = undefined;
-    var vert = undefined;
-    var panorama = undefined;
-    var images = undefined;
-    var loaded_data = undefined;
-    var panoramacb = undefined;
-    var datasource = undefined;
 
-    var createSelector = function(canvas) {
-        vert = new Selector({canvas:canvas});
-        vert.cb = function(params) {
-            panorama.selectchange(params,loaded_data);
-        }
-    };
+    // necessary globals
+    var loaded_data = undefined;
+    var onchange = undefined;
+
+    var panorama_canvas = undefined;
+    var selector_canvas = undefined;
+    var selector = undefined;
+    var panorama = undefined;
     var createPanorama = function(canvas) {
-        if (panorama === undefined) 
-        panorama = new Panorama({canvas:canvas});
+        return new Panorama({canvas:canvas});
     };
-    var setMouse = function(selector,canvas) {
-        $(canvas).mousemove(mouselib.mousemove.bind({vert:selector,canvas:canvas}));
-        $(canvas).mousedown(mouselib.mousedown.bind({vert:selector,canvas:canvas}));
-        $(canvas).mouseup(mouselib.mouseup.bind({vert:selector,canvas:canvas}));
-        $(canvas).mouseout(mouselib.mouseout.bind({vert:selector,canvas:canvas}));
+    var createSelector = function(canvas) {
+        return new Selector({canvas:canvas});
     };
     var wrapDiv = function(canvas) {
         var wrappingDiv = document.createElement('div');
@@ -512,31 +500,39 @@ var DataSlider = function(params) {
         wrappingDiv.height = canvas.height;
         $(canvas).wrap(wrappingDiv);
     };
-    this.to = function(obj) {
-        canvas = obj;
-        $(canvas).css('position','absolute');
-        canvas.onselectstart = function(){ return false; }
-        ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        wrapDiv(canvas);
+    var setMouse = function(selector,canvas) {
+        $(canvas).mousemove(mouselib.mousemove.bind({vert:selector,canvas:canvas}));
+        $(canvas).mousedown(mouselib.mousedown.bind({vert:selector,canvas:canvas}));
+        $(canvas).mouseup(mouselib.mouseup.bind({vert:selector,canvas:canvas}));
+        $(canvas).mouseout(mouselib.mouseout.bind({vert:selector,canvas:canvas}));
+    };
+
+    this.to = function(canvasobj) {
+        panorama_canvas = canvasobj;
+        $(panorama_canvas).css('position','absolute');
+        panorama_canvas.onselectstart = function(){ return false; }
+        wrapDiv(panorama_canvas);
 
         selector_canvas = document.createElement('canvas');
         $(selector_canvas).css('position','absolute');
-        selector_canvas.width = canvas.width; selector_canvas.height = canvas.height;
-        $(canvas).after(selector_canvas);
-        createSelector(selector_canvas);
-        setMouse(vert,selector_canvas);
-        createPanorama(canvas);
-        panorama.selectchange = panoramacb;
+        selector_canvas.width = panorama_canvas.width; selector_canvas.height = panorama_canvas.height;
+        $(panorama_canvas).after(selector_canvas);
+
+        selector = createSelector(selector_canvas);
+        panorama = createPanorama(panorama_canvas);
+        setMouse(selector,selector_canvas);
+        if (onchange !== undefined) 
+            panorama.onchange = onchange;
+        selector.cb = function(params) {
+            panorama.onchange(params,loaded_data);
+        }
     }
-    this.setImages = function(obj) {
-        images = obj;
-        if (vert !== undefined) {
-            vert.setImages(images);
-            vert.draw();
+    this.setImages = function(images) {
+        if (selector !== undefined) {
+            selector.setImages(images);
+            selector.draw();
         }
     };
-    var isDrag = false;
     this.load = function (data,displayfn) {
         loaded_data = data;
         panorama.load(data,displayfn);
@@ -546,14 +542,14 @@ var DataSlider = function(params) {
     this.onchange = function(cb) {
         // this way we can call onchange either before or after this.to creates panorama
         // for before
-        panoramacb = cb;
+        onchange = cb;
         // for after
-        if ((panorama !== undefined) && (panorama.selectchange === undefined)) {
-            panorama.selectchange = cb;
+        if ((panorama !== undefined) && (panorama.onchange === undefined)) {
+            panorama.onchange = cb;
         }
     }
     this.draw = function() {
-        panorama.selectchange({data:{left:0,right:46}},loaded_data);
+        panorama.onchange({data:{left:0,right:46}},loaded_data);
     };
     var add_draw = function(data) {
         loaded_data += data;
@@ -563,8 +559,7 @@ var DataSlider = function(params) {
         panorama.displayaddfn = fn;
     };
     this.listen = function(ev,name) {
-        datasource = ev; 
-        datasource.on(name,add_draw.bind({draw:this.draw,load:this.load}));
+        ev.on(name,add_draw.bind({draw:this.draw,load:this.load}));
     };
 };
 
@@ -689,7 +684,7 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     var ctx = canvas.getContext('2d');
     var loaded_data = undefined;
 
-    this.selectchange = undefined;
+    this.onchange = undefined;
     this.displayfn = undefined;
     this.load = function(data,fn) {
         loaded_data = data;
