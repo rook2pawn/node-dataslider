@@ -1,5 +1,7 @@
 var DataSlider = require('../');
 var Preloader = require('imagepreloader');
+var ee = require('events').EventEmitter;
+var datasource = new ee;
 
 $(window).ready(function() {
     var focus = document.getElementById('focus');
@@ -10,7 +12,6 @@ $(window).ready(function() {
     var basesize = 48;
     dataslider.to(canvas);
     dataslider.onchange(function(params,data) {
-        console.log(arguments);
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
@@ -19,7 +20,7 @@ $(window).ready(function() {
         var factor = focus.width / width;
         var size = basesize * factor;
         ctx.font = size + "px Courier";
-        console.log("width:" + width + " factor:" + factor);
+        //console.log("width:" + width + " factor:" + factor);
         ctx.fillText(data,-factor*(params.data.left+3),focus.height);
     });
     var imgset = new Preloader;
@@ -41,6 +42,20 @@ $(window).ready(function() {
         ctx.font = basesize + "px Courier";
         ctx.fillText(data,0,basesize-10);
     });
+    dataslider.listen(datasource,'data');    
+    dataslider.setPanoramaDisplayAddFn(function(old,newdata) {
+        console.log("new data:");
+        console.log(newdata);
+        console.log(old);
+    });
     dataslider.draw();
-//    dataslider.listen(newdatasource)
+    
+    var words = ['Buffalo Trace', 'Laphroaig', 'Glennfiddich', 'Glenlivet', 'Bullit', 'Woodford Reserve'];
+    var give = function() {
+        if (words.length > 1) {
+            datasource.emit('data',words.pop());
+            setTimeout(give,3000);
+        }
+    }
+    setTimeout(give,3000)
 });

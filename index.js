@@ -14,6 +14,7 @@ var DataSlider = function(params) {
     var images = undefined;
     var loaded_data = undefined;
     var panoramacb = undefined;
+    var datasource = undefined;
 
     var createSelector = function(canvas) {
         vert = new Selector({canvas:canvas});
@@ -80,6 +81,17 @@ var DataSlider = function(params) {
     }
     this.draw = function() {
         panorama.selectchange({data:{left:0,right:46}},loaded_data);
+    };
+    var add_draw = function(data) {
+        loaded_data += data;
+        panorama.add(data);
+    }
+    this.setPanoramaDisplayAddFn = function(fn) {
+        panorama.displayaddfn = fn;
+    };
+    this.listen = function(ev,name) {
+        datasource = ev; 
+        datasource.on(name,add_draw.bind({draw:this.draw,load:this.load}));
     };
 };
 

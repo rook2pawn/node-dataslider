@@ -487,6 +487,7 @@ var DataSlider = function(params) {
     var images = undefined;
     var loaded_data = undefined;
     var panoramacb = undefined;
+    var datasource = undefined;
 
     var createSelector = function(canvas) {
         vert = new Selector({canvas:canvas});
@@ -553,6 +554,17 @@ var DataSlider = function(params) {
     }
     this.draw = function() {
         panorama.selectchange({data:{left:0,right:46}},loaded_data);
+    };
+    var add_draw = function(data) {
+        loaded_data += data;
+        panorama.add(data);
+    }
+    this.setPanoramaDisplayAddFn = function(fn) {
+        panorama.displayaddfn = fn;
+    };
+    this.listen = function(ev,name) {
+        datasource = ev; 
+        datasource.on(name,add_draw.bind({draw:this.draw,load:this.load}));
     };
 };
 
@@ -676,11 +688,21 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     var canvas = params.canvas;
     var ctx = canvas.getContext('2d');
     var loaded_data = undefined;
-    this.load = function(data,display) {
-        loaded_data = data;
-        display(canvas,data);
-    };
+
     this.selectchange = undefined;
+    this.displayfn = undefined;
+    this.load = function(data,fn) {
+        loaded_data = data;
+        this.displayfn = fn;
+        this.displayfn(canvas,data);
+    };
+    this.displayaddfn = undefined;
+    this.add = function(data) {
+        if (this.displayaddfn !== undefined) {
+            this.displayaddfn(loaded_data,data);
+        }
+        loaded_data += data;
+    };
 };
 exports = module.exports = Panorama;
 });
@@ -836,8 +858,183 @@ require.define("/node_modules/imagepreloader/index.js",function(require,module,e
 })(typeof exports === 'undefined' ?  this : exports)
 });
 
+require.define("events",function(require,module,exports,__dirname,__filename,process){if (!process.EventEmitter) process.EventEmitter = function () {};
+
+var EventEmitter = exports.EventEmitter = process.EventEmitter;
+var isArray = typeof Array.isArray === 'function'
+    ? Array.isArray
+    : function (xs) {
+        return Object.prototype.toString.call(xs) === '[object Array]'
+    }
+;
+
+// By default EventEmitters will print a warning if more than
+// 10 listeners are added to it. This is a useful default which
+// helps finding memory leaks.
+//
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+var defaultMaxListeners = 10;
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!this._events) this._events = {};
+  this._events.maxListeners = n;
+};
+
+
+EventEmitter.prototype.emit = function(type) {
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events || !this._events.error ||
+        (isArray(this._events.error) && !this._events.error.length))
+    {
+      if (arguments[1] instanceof Error) {
+        throw arguments[1]; // Unhandled 'error' event
+      } else {
+        throw new Error("Uncaught, unspecified 'error' event.");
+      }
+      return false;
+    }
+  }
+
+  if (!this._events) return false;
+  var handler = this._events[type];
+  if (!handler) return false;
+
+  if (typeof handler == 'function') {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        var args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+    return true;
+
+  } else if (isArray(handler)) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    var listeners = handler.slice();
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      listeners[i].apply(this, args);
+    }
+    return true;
+
+  } else {
+    return false;
+  }
+};
+
+// EventEmitter is defined in src/node_events.cc
+// EventEmitter.prototype.emit() is also defined there.
+EventEmitter.prototype.addListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('addListener only takes instances of Function');
+  }
+
+  if (!this._events) this._events = {};
+
+  // To avoid recursion in the case that type == "newListeners"! Before
+  // adding it to the listeners, first emit "newListeners".
+  this.emit('newListener', type, listener);
+
+  if (!this._events[type]) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  } else if (isArray(this._events[type])) {
+
+    // Check for listener leak
+    if (!this._events[type].warned) {
+      var m;
+      if (this._events.maxListeners !== undefined) {
+        m = this._events.maxListeners;
+      } else {
+        m = defaultMaxListeners;
+      }
+
+      if (m && m > 0 && this._events[type].length > m) {
+        this._events[type].warned = true;
+        console.error('(node) warning: possible EventEmitter memory ' +
+                      'leak detected. %d listeners added. ' +
+                      'Use emitter.setMaxListeners() to increase limit.',
+                      this._events[type].length);
+        console.trace();
+      }
+    }
+
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  } else {
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  var self = this;
+  self.on(type, function g() {
+    self.removeListener(type, g);
+    listener.apply(this, arguments);
+  });
+
+  return this;
+};
+
+EventEmitter.prototype.removeListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('removeListener only takes instances of Function');
+  }
+
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (!this._events || !this._events[type]) return this;
+
+  var list = this._events[type];
+
+  if (isArray(list)) {
+    var i = list.indexOf(listener);
+    if (i < 0) return this;
+    list.splice(i, 1);
+    if (list.length == 0)
+      delete this._events[type];
+  } else if (this._events[type] === listener) {
+    delete this._events[type];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (type && this._events && this._events[type]) this._events[type] = null;
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  if (!this._events) this._events = {};
+  if (!this._events[type]) this._events[type] = [];
+  if (!isArray(this._events[type])) {
+    this._events[type] = [this._events[type]];
+  }
+  return this._events[type];
+};
+});
+
 require.define("/start.js",function(require,module,exports,__dirname,__filename,process){var DataSlider = require('../');
 var Preloader = require('imagepreloader');
+var ee = require('events').EventEmitter;
+var datasource = new ee;
 
 $(window).ready(function() {
     var focus = document.getElementById('focus');
@@ -848,7 +1045,6 @@ $(window).ready(function() {
     var basesize = 48;
     dataslider.to(canvas);
     dataslider.onchange(function(params,data) {
-        console.log(arguments);
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
@@ -857,7 +1053,7 @@ $(window).ready(function() {
         var factor = focus.width / width;
         var size = basesize * factor;
         ctx.font = size + "px Courier";
-        console.log("width:" + width + " factor:" + factor);
+        //console.log("width:" + width + " factor:" + factor);
         ctx.fillText(data,-factor*(params.data.left+3),focus.height);
     });
     var imgset = new Preloader;
@@ -879,8 +1075,22 @@ $(window).ready(function() {
         ctx.font = basesize + "px Courier";
         ctx.fillText(data,0,basesize-10);
     });
+    dataslider.listen(datasource,'data');    
+    dataslider.setPanoramaDisplayAddFn(function(old,newdata) {
+        console.log("new data:");
+        console.log(newdata);
+        console.log(old);
+    });
     dataslider.draw();
-//    dataslider.listen(newdatasource)
+    
+    var words = ['Buffalo Trace', 'Laphroaig', 'Glennfiddich', 'Glenlivet', 'Bullit', 'Woodford Reserve'];
+    var give = function() {
+        if (words.length > 1) {
+            datasource.emit('data',words.pop());
+            setTimeout(give,3000);
+        }
+    }
+    setTimeout(give,3000)
 });
 });
 require("/start.js");
