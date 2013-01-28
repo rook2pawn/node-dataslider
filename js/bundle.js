@@ -553,7 +553,7 @@ var DataSlider = function(params) {
     }
     this.draw = function() {
         panorama.selectchange({data:{left:0,right:46}},loaded_data);
-    }
+    };
 };
 
 exports = module.exports = DataSlider;
@@ -628,6 +628,7 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
     }
 };
 var mousedown = function(ev) {
+    ev.originalEvent.preventDefault();
     var canvas = this.canvas;
     var vert = this.vert;
     var offset = $(canvas).offset();
