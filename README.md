@@ -32,7 +32,8 @@ that type is fired, two things happen
 2. the function supplied in setDisplayAddFn will trigger.
 
 The order of these is settable on invocation, but defaults
-to the above order.
+to the above order. If addFn happens first, then old data in setDisplayFn will be the old + new data, and the newdata will simply
+be provided for reference.
 
 .onchange(function(params))
 ===========================

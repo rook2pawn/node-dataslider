@@ -700,7 +700,7 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     this.add = function(data) {
         loaded_data = this.panorama.addfn(loaded_data,data);
         if (this.panorama.displayaddfn !== undefined) {
-            this.panorama.displayaddfn(loaded_data,data);
+            this.panorama.displayaddfn(canvas,loaded_data,data);
         }
     };
 };
@@ -3132,10 +3132,20 @@ $(window).ready(function() {
         })
         .error(function(msg) { console.log("Error:" + msg) })
         .done();
-    dataslider.load({}, function(canvas,data){
+    dataslider.load([], function(canvas,data){
         var ctx = canvas.getContext('2d');
         ctx.fillStyle='#FF0000';
         ctx.fillRect(0,0,20,20);
+    });
+    dataslider.listen(datasource,'data');    
+    dataslider.setAddFn(function(old,newdata) {
+        console.log(old);
+        old.push(newdata);
+        return old;
+    })
+    dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
+//    console.log("old:");console.log(old);
+//    console.log("new:");console.log(newdata);
     });
 
     setInterval(function() {
