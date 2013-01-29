@@ -545,7 +545,11 @@ var DataSlider = function(params) {
         }
     }
     this.draw = function() {
-        panorama.onchange({pos:{left:0,right:46},value:panorama.getLoadedData()});
+        var params = {pos: 
+        { left: selector.config.left.pos,
+          right: selector.config.right.pos
+        }}; 
+        panorama.onchange(params);
     };
     this.getData = function(params) {
         return panorama.getLoadedData();
@@ -1038,7 +1042,6 @@ $(window).ready(function() {
     var canvas = document.getElementById('mycanvas');
     var ctx = canvas.getContext('2d');
     var dataslider = new DataSlider;
-    var basesize = 48;
     dataslider.to(canvas);
     dataslider.onchange(function(params) {
         var ctx = focusctx;
@@ -1046,11 +1049,14 @@ $(window).ready(function() {
         ctx.strokeRect(0,0,focus.width,focus.height);
         ctx.fillStyle = '#000000';
         var width = params.pos.right - params.pos.left;
-        var factor = focus.width / width;
-        var size = basesize * factor;
-        ctx.font = size + "px Courier";
-        //console.log("width:" + width + " factor:" + factor);
-        ctx.fillText(dataslider.getData(params),-factor*(params.pos.left+3),focus.height);
+        var data = dataslider.getData();
+        var unitwidth = canvas.width  / data.length;
+        var unitsize = focus.width * (unitwidth / width);
+        
+        ctx.font = Math.round(unitsize) + "px Courier";
+        for (var i = 0; i < data.length; i++) {
+            ctx.fillText(data[i],Math.floor(unitsize*i) - (focus.width/width)*(params.pos.left+3),focus.height);
+        }
     });
     var imgset = new Preloader;
     imgset
@@ -1066,24 +1072,29 @@ $(window).ready(function() {
         .error(function(msg) { console.log("Error:" + msg) })
         .done();
     dataslider.load("Jameson",function(canvas,data) {
+        var basesize = Math.floor(canvas.width / data.length);
         var ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000000';
         ctx.font = basesize + "px Courier";
-        ctx.fillText(data,0,basesize-10);
+        for (var i = 0; i < data.length; i++) {
+            ctx.fillStyle = '#000000';
+            ctx.fillText(data[i],basesize*i,canvas.height);
+        }
     });
     dataslider.listen(datasource,'data');    
     dataslider.setAddFn(function(old,newdata) {
         return old.concat(':').concat(newdata); 
     })
     dataslider.setDisplayAddFn(function(old,newdata) {
-        console.log("new data:");
-        console.log(newdata);
-        console.log(old);
+        var basesize = Math.floor(canvas.width / old.length);
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = '#000000';
         ctx.font = basesize + "px Courier";
-        ctx.fillText(old.concat(newdata),0,basesize-10);
+        for (var i = 0; i < old.length; i++) {
+            ctx.fillStyle = '#000000';
+            ctx.fillText(old[i],basesize*i,canvas.height);
+        }
+        dataslider.draw();
     });
     dataslider.draw();
     

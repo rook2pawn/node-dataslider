@@ -72,7 +72,11 @@ var DataSlider = function(params) {
         }
     }
     this.draw = function() {
-        panorama.onchange({pos:{left:0,right:46},value:panorama.getLoadedData()});
+        var params = {pos: 
+        { left: selector.config.left.pos,
+          right: selector.config.right.pos
+        }}; 
+        panorama.onchange(params);
     };
     this.getData = function(params) {
         return panorama.getLoadedData();
