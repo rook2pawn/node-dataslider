@@ -52,7 +52,7 @@ $(window).ready(function() {
     dataslider.setAddFn(function(old,newdata) {
         return old.concat(':').concat(newdata); 
     })
-    dataslider.setDisplayAddFn(function(old,newdata) {
+    dataslider.setDisplayAddFn(function(canvas,old,newdata) {
         var basesize = Math.floor(canvas.width / old.length);
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height);

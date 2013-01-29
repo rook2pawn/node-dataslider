@@ -61,3 +61,16 @@ name: selector_left_down.png  -> left selector on mousedown
 
 name: selector_right_down.png  -> right selector on mousedown
 
+
+Copy Pasta
+==========
+
+Since you need to setup these functions, here is some copy paste.
+
+    dataslider.to();
+    dataslider.onchange(function(params) { });
+    dataslider.setImages(images);
+    dataslider.load(,function(canvas,data) { });
+    dataslider.listen(,);    
+    dataslider.setAddFn(function(old,newdata) {})
+    dataslider.setDisplayAddFn(function(canvas,old,newdata) { });
