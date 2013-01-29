@@ -50,9 +50,14 @@ have a .name property. The following will be used as a lookup
 table between image objects and how they will be used.
 
 name: selector_left.png  -> left selector
+
 name: selector_right.png  -> right selector
+
 name: selector_left_hover.png  -> left selector on hover
+
 name: selector_right_hover.png  -> right selector on hover
+
 name: selector_left_down.png  -> left selector on mousedown
+
 name: selector_right_down.png  -> right selector on mousedown
 
