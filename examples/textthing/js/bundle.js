@@ -545,10 +545,9 @@ var DataSlider = function(params) {
         }
     }
     this.draw = function() {
-        panorama.onchange({data:{left:0,right:46},value:panorama.getLoadedData()});
+        panorama.onchange({pos:{left:0,right:46},value:panorama.getLoadedData()});
     };
     this.getData = function(params) {
-        console.log("get Data:"); console.log(params);
         return panorama.getLoadedData();
     }
     this.setDisplayAddFn = function(fn) {
@@ -686,7 +685,6 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     this.displayfn = undefined;
     this.addfn = undefined;
     this.getLoadedData = function() {
-        console.log("GetLoaded: "  + loaded_data);
         return loaded_data
     }
     this.load = function(data,fn) {
@@ -696,10 +694,10 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     };
     this.displayaddfn = undefined;
     this.add = function(data) {
+        loaded_data = this.panorama.addfn(loaded_data,data);
         if (this.panorama.displayaddfn !== undefined) {
             this.panorama.displayaddfn(loaded_data,data);
         }
-        loaded_data = this.panorama.addfn(loaded_data,data);
     };
 };
 exports = module.exports = Panorama;
@@ -781,12 +779,12 @@ require.define("/lib/selector.js",function(require,module,exports,__dirname,__fi
         switch (type) {
             case 'drag':
                 if (this.cb !== undefined) {
-                    this.cb({type:type,data:data});
+                    this.cb({type:type,pos:data});
                 }
             break;
             case 'resize':
                 if (this.cb !== undefined) {
-                    this.cb({type:type,data:data});
+                    this.cb({type:type,pos:data});
                 }
             break;
             default: 
@@ -1047,12 +1045,12 @@ $(window).ready(function() {
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
         ctx.fillStyle = '#000000';
-        var width = params.data.right - params.data.left;
+        var width = params.pos.right - params.pos.left;
         var factor = focus.width / width;
         var size = basesize * factor;
         ctx.font = size + "px Courier";
         //console.log("width:" + width + " factor:" + factor);
-        ctx.fillText(dataslider.getData(params),-factor*(params.data.left+3),focus.height);
+        ctx.fillText(dataslider.getData(params),-factor*(params.pos.left+3),focus.height);
     });
     var imgset = new Preloader;
     imgset

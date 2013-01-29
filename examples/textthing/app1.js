@@ -16,12 +16,12 @@ $(window).ready(function() {
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
         ctx.fillStyle = '#000000';
-        var width = params.data.right - params.data.left;
+        var width = params.pos.right - params.pos.left;
         var factor = focus.width / width;
         var size = basesize * factor;
         ctx.font = size + "px Courier";
         //console.log("width:" + width + " factor:" + factor);
-        ctx.fillText(dataslider.getData(params),-factor*(params.data.left+3),focus.height);
+        ctx.fillText(dataslider.getData(params),-factor*(params.pos.left+3),focus.height);
     });
     var imgset = new Preloader;
     imgset
