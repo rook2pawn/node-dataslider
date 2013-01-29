@@ -11,7 +11,7 @@ $(window).ready(function() {
     var dataslider = new DataSlider;
     var basesize = 48;
     dataslider.to(canvas);
-    dataslider.onchange(function(params,data) {
+    dataslider.onchange(function(params) {
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
@@ -21,7 +21,7 @@ $(window).ready(function() {
         var size = basesize * factor;
         ctx.font = size + "px Courier";
         //console.log("width:" + width + " factor:" + factor);
-        ctx.fillText(data,-factor*(params.data.left+3),focus.height);
+        ctx.fillText(dataslider.getData(params),-factor*(params.data.left+3),focus.height);
     });
     var imgset = new Preloader;
     imgset
@@ -43,10 +43,18 @@ $(window).ready(function() {
         ctx.fillText(data,0,basesize-10);
     });
     dataslider.listen(datasource,'data');    
-    dataslider.setPanoramaDisplayAddFn(function(old,newdata) {
+    dataslider.setAddFn(function(old,newdata) {
+        return old.concat(':').concat(newdata); 
+    })
+    dataslider.setDisplayAddFn(function(old,newdata) {
         console.log("new data:");
         console.log(newdata);
         console.log(old);
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.font = basesize + "px Courier";
+        ctx.fillText(old.concat(newdata),0,basesize-10);
     });
     dataslider.draw();
     

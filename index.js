@@ -7,7 +7,6 @@ var DataSlider = function(params) {
         var params = {}
 
     // necessary globals
-    var loaded_data = undefined;
     var onchange = undefined;
 
     var panorama_canvas = undefined;
@@ -51,7 +50,7 @@ var DataSlider = function(params) {
         if (onchange !== undefined) 
             panorama.onchange = onchange;
         selector.cb = function(params) {
-            panorama.onchange(params,loaded_data);
+            panorama.onchange(params);
         }
     }
     this.setImages = function(images) {
@@ -60,11 +59,8 @@ var DataSlider = function(params) {
             selector.draw();
         }
     };
-    this.load = function (data,displayfn) {
-        loaded_data = data;
-        panorama.load(data,displayfn);
-    }
-    this.listen = function() {
+    this.load = function(data,fn) {
+        panorama.load(data,fn);
     }
     this.onchange = function(cb) {
         // this way we can call onchange either before or after this.to creates panorama
@@ -76,18 +72,20 @@ var DataSlider = function(params) {
         }
     }
     this.draw = function() {
-        panorama.onchange({data:{left:0,right:46}},loaded_data);
+        panorama.onchange({data:{left:0,right:46},value:panorama.getLoadedData()});
     };
-    var add_draw = function(data) {
-        loaded_data += data;
-        panorama.add(data);
+    this.getData = function(params) {
+        console.log("get Data:"); console.log(params);
+        return panorama.getLoadedData();
     }
-    this.setPanoramaDisplayAddFn = function(fn) {
+    this.setDisplayAddFn = function(fn) {
         panorama.displayaddfn = fn;
     };
+    this.setAddFn = function(fn) {
+        panorama.addfn = fn;
+    };
     this.listen = function(ev,name) {
-        ev.on(name,add_draw.bind({draw:this.draw,load:this.load}));
+        ev.on(name,panorama.add.bind({panorama:panorama}));
     };
 };
-
 exports = module.exports = DataSlider;

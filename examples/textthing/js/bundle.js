@@ -480,7 +480,6 @@ var DataSlider = function(params) {
         var params = {}
 
     // necessary globals
-    var loaded_data = undefined;
     var onchange = undefined;
 
     var panorama_canvas = undefined;
@@ -524,7 +523,7 @@ var DataSlider = function(params) {
         if (onchange !== undefined) 
             panorama.onchange = onchange;
         selector.cb = function(params) {
-            panorama.onchange(params,loaded_data);
+            panorama.onchange(params);
         }
     }
     this.setImages = function(images) {
@@ -533,11 +532,8 @@ var DataSlider = function(params) {
             selector.draw();
         }
     };
-    this.load = function (data,displayfn) {
-        loaded_data = data;
-        panorama.load(data,displayfn);
-    }
-    this.listen = function() {
+    this.load = function(data,fn) {
+        panorama.load(data,fn);
     }
     this.onchange = function(cb) {
         // this way we can call onchange either before or after this.to creates panorama
@@ -549,20 +545,22 @@ var DataSlider = function(params) {
         }
     }
     this.draw = function() {
-        panorama.onchange({data:{left:0,right:46}},loaded_data);
+        panorama.onchange({data:{left:0,right:46},value:panorama.getLoadedData()});
     };
-    var add_draw = function(data) {
-        loaded_data += data;
-        panorama.add(data);
+    this.getData = function(params) {
+        console.log("get Data:"); console.log(params);
+        return panorama.getLoadedData();
     }
-    this.setPanoramaDisplayAddFn = function(fn) {
+    this.setDisplayAddFn = function(fn) {
         panorama.displayaddfn = fn;
     };
+    this.setAddFn = function(fn) {
+        panorama.addfn = fn;
+    };
     this.listen = function(ev,name) {
-        ev.on(name,add_draw.bind({draw:this.draw,load:this.load}));
+        ev.on(name,panorama.add.bind({panorama:panorama}));
     };
 };
-
 exports = module.exports = DataSlider;
 });
 
@@ -686,6 +684,11 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
 
     this.onchange = undefined;
     this.displayfn = undefined;
+    this.addfn = undefined;
+    this.getLoadedData = function() {
+        console.log("GetLoaded: "  + loaded_data);
+        return loaded_data
+    }
     this.load = function(data,fn) {
         loaded_data = data;
         this.displayfn = fn;
@@ -693,10 +696,10 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     };
     this.displayaddfn = undefined;
     this.add = function(data) {
-        if (this.displayaddfn !== undefined) {
-            this.displayaddfn(loaded_data,data);
+        if (this.panorama.displayaddfn !== undefined) {
+            this.panorama.displayaddfn(loaded_data,data);
         }
-        loaded_data += data;
+        loaded_data = this.panorama.addfn(loaded_data,data);
     };
 };
 exports = module.exports = Panorama;
@@ -1026,7 +1029,7 @@ EventEmitter.prototype.listeners = function(type) {
 };
 });
 
-require.define("/start.js",function(require,module,exports,__dirname,__filename,process){var DataSlider = require('../');
+require.define("/examples/textthing/app1.js",function(require,module,exports,__dirname,__filename,process){var DataSlider = require('../');
 var Preloader = require('imagepreloader');
 var ee = require('events').EventEmitter;
 var datasource = new ee;
@@ -1039,7 +1042,7 @@ $(window).ready(function() {
     var dataslider = new DataSlider;
     var basesize = 48;
     dataslider.to(canvas);
-    dataslider.onchange(function(params,data) {
+    dataslider.onchange(function(params) {
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
@@ -1049,7 +1052,7 @@ $(window).ready(function() {
         var size = basesize * factor;
         ctx.font = size + "px Courier";
         //console.log("width:" + width + " factor:" + factor);
-        ctx.fillText(data,-factor*(params.data.left+3),focus.height);
+        ctx.fillText(dataslider.getData(params),-factor*(params.data.left+3),focus.height);
     });
     var imgset = new Preloader;
     imgset
@@ -1071,10 +1074,18 @@ $(window).ready(function() {
         ctx.fillText(data,0,basesize-10);
     });
     dataslider.listen(datasource,'data');    
-    dataslider.setPanoramaDisplayAddFn(function(old,newdata) {
+    dataslider.setAddFn(function(old,newdata) {
+        return old.concat(':').concat(newdata); 
+    })
+    dataslider.setDisplayAddFn(function(old,newdata) {
         console.log("new data:");
         console.log(newdata);
         console.log(old);
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.font = basesize + "px Courier";
+        ctx.fillText(old.concat(newdata),0,basesize-10);
     });
     dataslider.draw();
     
@@ -1088,5 +1099,5 @@ $(window).ready(function() {
     setTimeout(give,3000)
 });
 });
-require("/start.js");
+require("/examples/textthing/app1.js");
 })();
