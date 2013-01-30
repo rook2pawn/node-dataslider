@@ -91,10 +91,10 @@ var rangeY = function(list,specialkey) {
         ctx.beginPath();
         ctx.moveTo(0,canvas.height);
         var range = rangeY(old,'y');
-        var step = Math.floor(canvas.width / old.length);
+        var step = canvas.width / old.length;
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
-            ctx.lineTo(i*step,canvas.height - normalized);
+            ctx.lineTo(Math.floor(i*step),Math.floor(canvas.height - normalized));
         }
         ctx.lineTo(canvas.width,canvas.height);
         ctx.lineTo(0,canvas.height);

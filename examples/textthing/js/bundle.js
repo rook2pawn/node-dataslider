@@ -610,7 +610,7 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
     } else {
         if (vert.config.middle.status == 'drag') {
             var offset = x - vert.config.middle.startx;
-            if ((vert.config.right.pos + offset < (canvas.width - vert.config.right.width)) && (vert.config.left.pos + offset >= 0)) {
+            if ((vert.config.right.pos + offset < (canvas.width)) && (vert.config.left.pos + offset >= 0)) {
                 vert.config.middle.startx = x;
                 vert.config.left.pos += offset;
                 vert.config.right.pos += offset;
@@ -623,7 +623,7 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
             needsDraw = true;
             vert.action('resize',{left:vert.config.left.pos,right:vert.config.right.pos});
         } else if (vert.config.right.status == 'down') {
-            if (x < canvas.width - vert.config.right.width) {
+            if (x < canvas.width) {
                 vert.config.right.pos = x;
                 $(canvas).addClass('hover');                
                 needsDraw = true;
@@ -698,9 +698,12 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     };
     this.displayaddfn = undefined;
     this.add = function(data) {
-        loaded_data = this.panorama.addfn(loaded_data,data);
-        if (this.panorama.displayaddfn !== undefined) {
-            this.panorama.displayaddfn(loaded_data,data);
+        var result = this.panorama.addfn(loaded_data,data);
+        if ((result !== undefined) || (result !== false)) {
+            loaded_data = result
+            if (this.panorama.displayaddfn !== undefined) {
+                this.panorama.displayaddfn(canvas,loaded_data,data);
+            }
         }
     };
 };
@@ -732,44 +735,44 @@ require.define("/lib/selector.js",function(require,module,exports,__dirname,__fi
         ctx = obj;
     };
     this.isMiddle = function(x) {
-        return ((x > (config.left.pos + config.left.width + 1)) && ((x+1) < config.right.pos))
+        return ((x > (config.left.pos - Math.floor(config.left.width/2) + config.left.width + 1)) && (x+1 < config.right.pos - Math.floor(config.right.width/2)))
     };
     this.isLeft = function(x) {
-        return ((x >= config.left.pos) && (x < (config.left.pos+config.left.width)))
+        return ((x >= config.left.pos - Math.floor(config.left.width/2)) && (x < (config.left.pos -Math.floor(config.left.width/2) +config.left.width)))
     };
     this.isRight = function(x) {
-        return ((x>= config.right.pos) && (x< (config.right.pos+config.right.width)))
+        return ((x>= config.right.pos - Math.floor(config.right.width/2)) && (x< (config.right.pos - Math.floor(config.right.width/2) +config.right.width)))
     };
     this.draw = function() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         // drag inside rect first
         ctx.fillStyle='rgba(211,255,255,0.5)';
-        var x0 = Math.floor(config.left.pos+(config.left.width/2));
-        var x1 = Math.floor(config.right.pos+(config.right.width/2));
-        ctx.fillRect(x0,0,(config.right.pos - config.left.pos),canvas.height);
+        ctx.fillRect(config.left.pos,0,(config.right.pos - config.left.pos),canvas.height);
         ctx.fill();
+        var offset_left = Math.floor(config.left.width / 2);
+        var offset_right = Math.floor(config.right.width / 2);
         switch (config.left.status) {
             case 'normal':
-            ctx.drawImage(this.hash['selector_left.png'],config.left.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_left.png'],config.left.pos-offset_left,0,7,46);
             break;
             case 'hover':
-            ctx.drawImage(this.hash['selector_left_hover.png'],config.left.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_left_hover.png'],config.left.pos-offset_left,0,7,46);
             break;
             case 'down':
-            ctx.drawImage(this.hash['selector_left_down.png'],config.left.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_left_down.png'],config.left.pos-offset_left,0,7,46);
             break;
             default:
             break;
         }
         switch (config.right.status) {
             case 'normal':
-            ctx.drawImage(this.hash['selector_right.png'],config.right.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_right.png'],config.right.pos-offset_right,0,7,46);
             break;
             case 'hover':
-            ctx.drawImage(this.hash['selector_right_hover.png'],config.right.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_right_hover.png'],config.right.pos-offset_right,0,7,46);
             break;
             case 'down':
-            ctx.drawImage(this.hash['selector_right_down.png'],config.right.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_right_down.png'],config.right.pos-offset_right,0,7,46);
             break;
             default:
             break;
@@ -1085,7 +1088,7 @@ $(window).ready(function() {
     dataslider.setAddFn(function(old,newdata) {
         return old.concat(':').concat(newdata); 
     })
-    dataslider.setDisplayAddFn(function(old,newdata) {
+    dataslider.setDisplayAddFn(function(canvas,old,newdata) {
         var basesize = Math.floor(canvas.width / old.length);
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height);

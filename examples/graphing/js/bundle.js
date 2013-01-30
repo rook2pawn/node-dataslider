@@ -747,9 +747,9 @@ require.define("/lib/selector.js",function(require,module,exports,__dirname,__fi
         ctx.clearRect(0,0,canvas.width,canvas.height);
         // drag inside rect first
         ctx.fillStyle='rgba(211,255,255,0.5)';
-        var x0 = Math.floor(config.left.pos+(config.left.width/2));
-        var x1 = Math.floor(config.right.pos+(config.right.width/2));
-        ctx.fillRect(x0,0,(config.right.pos - config.left.pos),canvas.height);
+//        var x0 = Math.floor(config.left.pos+(config.left.width/2));
+//        var x1 = Math.floor(config.right.pos+(config.right.width/2));
+        ctx.fillRect(config.left.pos,0,(config.right.pos - config.left.pos),canvas.height);
         ctx.fill();
         switch (config.left.status) {
             case 'normal':
@@ -3768,10 +3768,10 @@ var rangeY = function(list,specialkey) {
         ctx.beginPath();
         ctx.moveTo(0,canvas.height);
         var range = rangeY(old,'y');
-        var step = Math.floor(canvas.width / old.length);
+        var step = canvas.width / old.length;
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
-            ctx.lineTo(i*step,canvas.height - normalized);
+            ctx.lineTo(Math.floor(i*step),Math.floor(canvas.height - normalized));
         }
         ctx.lineTo(canvas.width,canvas.height);
         ctx.lineTo(0,canvas.height);
