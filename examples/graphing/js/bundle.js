@@ -623,12 +623,12 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
                 vert.action('drag',vert.config);
                 needsDraw = true;
             }
-        } else if (vert.config.left.status == 'down') {
+        } else if ((vert.config.left.status == 'down') && (x+vert.config.right.width <= vert.config.right.pos)) {
             vert.config.left.pos = x;
             $(canvas).addClass('hover');                
             needsDraw = true;
             vert.action('resize',vert.config);
-        } else if (vert.config.right.status == 'down') {
+        } else if ((vert.config.right.status == 'down') && (x-vert.config.left.width >= vert.config.left.pos)) {
             if (x < canvas.width) {
                 vert.config.right.pos = x;
                 $(canvas).addClass('hover');                
@@ -1003,7 +1003,6 @@ exports.setSource = function(source) {
 
         var windowsize = source.windowsize || data.windowsize || 10;
         var datatodisplay = util.cropData(source.dataset,windowsize);
-//        console.log(source.dataset);
         var startx = util.getStartX(datatodisplay.length,windowsize,this.canvas.width); 
         var spacing = util.getSpacing(windowsize,this.canvas.width);
 
@@ -3780,11 +3779,6 @@ $(window).ready(function() {
     // and accessed in onchange.
     var data = []; 
     dataslider.to(canvas);
-    dataslider.onchange(function(params) {
-        var pos = params.pos;
-        var indices = lib.getIndices(data,pos);
-        //console.log(indices);
-    });
     var imgset = new Preloader;
     imgset
         .add('img/selector_left.png')
@@ -3805,29 +3799,32 @@ $(window).ready(function() {
         old.push(newdata);
         return old;
     });
+    dataslider.onchange(function(params) {
+        var pos = params.pos;
+        var indices = lib.getIndices(data,pos);
+        $('#data').html('Left:' + indices.left + ' right:' + indices.right);
+    });
     dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
         if (old.length > 50) {
             dataslider.thin();
             old = dataslider.getData();
         }
+        if ((old.length - 1) == 0)
+            return
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         ctx.beginPath();
         var range = lib.rangeY(old,'y');
-        var step = canvas.width / old.length;
+        var step = canvas.width / (old.length - 1);
         data = [];
+        ctx.moveTo(0,canvas.height);
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
             var obj = {};
             obj.x = Math.floor(i*step);
             obj.y = Math.floor(canvas.height - normalized);
             data.push(obj);
-            if (i === 0) {
-                ctx.moveTo(obj.x,obj.y)
-            } else {
-                ctx.lineTo(obj.x,obj.y);
-            }
-
+            ctx.lineTo(obj.x,obj.y);
         }
         ctx.lineTo(canvas.width,canvas.height);
         ctx.lineTo(0,canvas.height);
@@ -3835,6 +3832,7 @@ $(window).ready(function() {
         ctx.fill();
         ctx.strokeStyle = '#517ea5';
         ctx.stroke();
+
         // dots
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
@@ -3848,7 +3846,7 @@ $(window).ready(function() {
         // find out UI.left -> data[i]  and UI.right -> data[j]
         var pos = dataslider.getConfig(); 
         var indices = lib.getIndices(data,pos);
-        //console.log(indices);
+        $('#data').html('Left:' + indices.left + ' right:' + indices.right);
         
     });
     var idx = 0;
