@@ -610,7 +610,7 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
     } else {
         if (vert.config.middle.status == 'drag') {
             var offset = x - vert.config.middle.startx;
-            if ((vert.config.right.pos + offset < (canvas.width - vert.config.right.width)) && (vert.config.left.pos + offset >= 0)) {
+            if ((vert.config.right.pos + offset < (canvas.width)) && (vert.config.left.pos + offset >= 0)) {
                 vert.config.middle.startx = x;
                 vert.config.left.pos += offset;
                 vert.config.right.pos += offset;
@@ -623,7 +623,7 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
             needsDraw = true;
             vert.action('resize',{left:vert.config.left.pos,right:vert.config.right.pos});
         } else if (vert.config.right.status == 'down') {
-            if (x < canvas.width - vert.config.right.width) {
+            if (x < canvas.width) {
                 vert.config.right.pos = x;
                 $(canvas).addClass('hover');                
                 needsDraw = true;
@@ -735,44 +735,44 @@ require.define("/lib/selector.js",function(require,module,exports,__dirname,__fi
         ctx = obj;
     };
     this.isMiddle = function(x) {
-        return ((x > (config.left.pos + config.left.width + 1)) && ((x+1) < config.right.pos))
+        return ((x > (config.left.pos - Math.floor(config.left.width/2) + config.left.width + 1)) && (x+1 < config.right.pos - Math.floor(config.right.width/2)))
     };
     this.isLeft = function(x) {
-        return ((x >= config.left.pos) && (x < (config.left.pos+config.left.width)))
+        return ((x >= config.left.pos - Math.floor(config.left.width/2)) && (x < (config.left.pos -Math.floor(config.left.width/2) +config.left.width)))
     };
     this.isRight = function(x) {
-        return ((x>= config.right.pos) && (x< (config.right.pos+config.right.width)))
+        return ((x>= config.right.pos - Math.floor(config.right.width/2)) && (x< (config.right.pos - Math.floor(config.right.width/2) +config.right.width)))
     };
     this.draw = function() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         // drag inside rect first
         ctx.fillStyle='rgba(211,255,255,0.5)';
-//        var x0 = Math.floor(config.left.pos+(config.left.width/2));
-//        var x1 = Math.floor(config.right.pos+(config.right.width/2));
         ctx.fillRect(config.left.pos,0,(config.right.pos - config.left.pos),canvas.height);
         ctx.fill();
+        var offset_left = Math.floor(config.left.width / 2);
+        var offset_right = Math.floor(config.right.width / 2);
         switch (config.left.status) {
             case 'normal':
-            ctx.drawImage(this.hash['selector_left.png'],config.left.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_left.png'],config.left.pos-offset_left,0,7,46);
             break;
             case 'hover':
-            ctx.drawImage(this.hash['selector_left_hover.png'],config.left.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_left_hover.png'],config.left.pos-offset_left,0,7,46);
             break;
             case 'down':
-            ctx.drawImage(this.hash['selector_left_down.png'],config.left.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_left_down.png'],config.left.pos-offset_left,0,7,46);
             break;
             default:
             break;
         }
         switch (config.right.status) {
             case 'normal':
-            ctx.drawImage(this.hash['selector_right.png'],config.right.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_right.png'],config.right.pos-offset_right,0,7,46);
             break;
             case 'hover':
-            ctx.drawImage(this.hash['selector_right_hover.png'],config.right.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_right_hover.png'],config.right.pos-offset_right,0,7,46);
             break;
             case 'down':
-            ctx.drawImage(this.hash['selector_right_down.png'],config.right.pos,0,7,46);
+            ctx.drawImage(this.hash['selector_right_down.png'],config.right.pos-offset_right,0,7,46);
             break;
             default:
             break;
@@ -2931,6 +2931,227 @@ var interaction = function (params) {
 exports = module.exports = interaction;
 });
 
+require.define("events",function(require,module,exports,__dirname,__filename,process){if (!process.EventEmitter) process.EventEmitter = function () {};
+
+var EventEmitter = exports.EventEmitter = process.EventEmitter;
+var isArray = typeof Array.isArray === 'function'
+    ? Array.isArray
+    : function (xs) {
+        return Object.prototype.toString.call(xs) === '[object Array]'
+    }
+;
+
+// By default EventEmitters will print a warning if more than
+// 10 listeners are added to it. This is a useful default which
+// helps finding memory leaks.
+//
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+var defaultMaxListeners = 10;
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!this._events) this._events = {};
+  this._events.maxListeners = n;
+};
+
+
+EventEmitter.prototype.emit = function(type) {
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events || !this._events.error ||
+        (isArray(this._events.error) && !this._events.error.length))
+    {
+      if (arguments[1] instanceof Error) {
+        throw arguments[1]; // Unhandled 'error' event
+      } else {
+        throw new Error("Uncaught, unspecified 'error' event.");
+      }
+      return false;
+    }
+  }
+
+  if (!this._events) return false;
+  var handler = this._events[type];
+  if (!handler) return false;
+
+  if (typeof handler == 'function') {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        var args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+    return true;
+
+  } else if (isArray(handler)) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    var listeners = handler.slice();
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      listeners[i].apply(this, args);
+    }
+    return true;
+
+  } else {
+    return false;
+  }
+};
+
+// EventEmitter is defined in src/node_events.cc
+// EventEmitter.prototype.emit() is also defined there.
+EventEmitter.prototype.addListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('addListener only takes instances of Function');
+  }
+
+  if (!this._events) this._events = {};
+
+  // To avoid recursion in the case that type == "newListeners"! Before
+  // adding it to the listeners, first emit "newListeners".
+  this.emit('newListener', type, listener);
+
+  if (!this._events[type]) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  } else if (isArray(this._events[type])) {
+
+    // Check for listener leak
+    if (!this._events[type].warned) {
+      var m;
+      if (this._events.maxListeners !== undefined) {
+        m = this._events.maxListeners;
+      } else {
+        m = defaultMaxListeners;
+      }
+
+      if (m && m > 0 && this._events[type].length > m) {
+        this._events[type].warned = true;
+        console.error('(node) warning: possible EventEmitter memory ' +
+                      'leak detected. %d listeners added. ' +
+                      'Use emitter.setMaxListeners() to increase limit.',
+                      this._events[type].length);
+        console.trace();
+      }
+    }
+
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  } else {
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  var self = this;
+  self.on(type, function g() {
+    self.removeListener(type, g);
+    listener.apply(this, arguments);
+  });
+
+  return this;
+};
+
+EventEmitter.prototype.removeListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('removeListener only takes instances of Function');
+  }
+
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (!this._events || !this._events[type]) return this;
+
+  var list = this._events[type];
+
+  if (isArray(list)) {
+    var i = list.indexOf(listener);
+    if (i < 0) return this;
+    list.splice(i, 1);
+    if (list.length == 0)
+      delete this._events[type];
+  } else if (this._events[type] === listener) {
+    delete this._events[type];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (type && this._events && this._events[type]) this._events[type] = null;
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  if (!this._events) this._events = {};
+  if (!this._events[type]) this._events[type] = [];
+  if (!isArray(this._events[type])) {
+    this._events[type] = [this._events[type]];
+  }
+  return this._events[type];
+};
+});
+
+require.define("/examples/graphing/util.js",function(require,module,exports,__dirname,__filename,process){var Hash = require('hashish');
+exports.rangeY = function(list,specialkey) {
+    // % to top pad so the "peak" isn't at the top of the viewport, but we allow some extra space for better visualization
+//    var padding = 0.10; // 0.10 = 10%;
+    var padding = 0;
+
+    var minY = undefined;
+    var maxY = undefined;
+    for (var i = 0; i < list.length; i++) {
+        Hash(list[i])
+            .filter(function(val,key) { 
+                if (specialkey !== undefined) 
+                    return (key == specialkey) 
+                return (key !== 'date')
+             })
+            .forEach(function(val,key) {
+            if (minY == undefined) 
+                minY = val;
+            if (maxY == undefined)
+                maxY = val;
+            if (val < minY)
+                minY = val;
+            if (val > maxY)
+                maxY = val;
+        });
+    }
+    maxY = (1 + padding)*maxY;
+    var spread = undefined;
+    if ((minY!== undefined) && (maxY !== undefined)) {
+        spread = maxY - minY;
+    }
+    // shift is the amount any value in the interval needs to be shifted by to fall with the interval [0,spread]
+    var shift = undefined;
+    if ((minY < 0) && (maxY >= 0)) {
+        shift = Math.abs(minY);
+    }
+    if ((minY < 0) && (maxY < 0)) {
+        shift = Math.abs(maxY) + Math.abs(minY);
+    }
+    if (minY > 0) {
+        shift = -minY;
+    }
+    if (minY == 0) 
+        shift = 0;
+    return {min:minY,max:maxY,spread:spread,shift:shift}
+};
+});
+
 require.define("/node_modules/hashish/package.json",function(require,module,exports,__dirname,__filename,process){module.exports = {"main":"./index.js"}});
 
 require.define("/node_modules/hashish/index.js",function(require,module,exports,__dirname,__filename,process){module.exports = Hash;
@@ -3502,184 +3723,11 @@ forEach(objectKeys(Traverse.prototype), function (key) {
 });
 });
 
-require.define("events",function(require,module,exports,__dirname,__filename,process){if (!process.EventEmitter) process.EventEmitter = function () {};
-
-var EventEmitter = exports.EventEmitter = process.EventEmitter;
-var isArray = typeof Array.isArray === 'function'
-    ? Array.isArray
-    : function (xs) {
-        return Object.prototype.toString.call(xs) === '[object Array]'
-    }
-;
-
-// By default EventEmitters will print a warning if more than
-// 10 listeners are added to it. This is a useful default which
-// helps finding memory leaks.
-//
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-var defaultMaxListeners = 10;
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!this._events) this._events = {};
-  this._events.maxListeners = n;
-};
-
-
-EventEmitter.prototype.emit = function(type) {
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events || !this._events.error ||
-        (isArray(this._events.error) && !this._events.error.length))
-    {
-      if (arguments[1] instanceof Error) {
-        throw arguments[1]; // Unhandled 'error' event
-      } else {
-        throw new Error("Uncaught, unspecified 'error' event.");
-      }
-      return false;
-    }
-  }
-
-  if (!this._events) return false;
-  var handler = this._events[type];
-  if (!handler) return false;
-
-  if (typeof handler == 'function') {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        var args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-    return true;
-
-  } else if (isArray(handler)) {
-    var args = Array.prototype.slice.call(arguments, 1);
-
-    var listeners = handler.slice();
-    for (var i = 0, l = listeners.length; i < l; i++) {
-      listeners[i].apply(this, args);
-    }
-    return true;
-
-  } else {
-    return false;
-  }
-};
-
-// EventEmitter is defined in src/node_events.cc
-// EventEmitter.prototype.emit() is also defined there.
-EventEmitter.prototype.addListener = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('addListener only takes instances of Function');
-  }
-
-  if (!this._events) this._events = {};
-
-  // To avoid recursion in the case that type == "newListeners"! Before
-  // adding it to the listeners, first emit "newListeners".
-  this.emit('newListener', type, listener);
-
-  if (!this._events[type]) {
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  } else if (isArray(this._events[type])) {
-
-    // Check for listener leak
-    if (!this._events[type].warned) {
-      var m;
-      if (this._events.maxListeners !== undefined) {
-        m = this._events.maxListeners;
-      } else {
-        m = defaultMaxListeners;
-      }
-
-      if (m && m > 0 && this._events[type].length > m) {
-        this._events[type].warned = true;
-        console.error('(node) warning: possible EventEmitter memory ' +
-                      'leak detected. %d listeners added. ' +
-                      'Use emitter.setMaxListeners() to increase limit.',
-                      this._events[type].length);
-        console.trace();
-      }
-    }
-
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  } else {
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  var self = this;
-  self.on(type, function g() {
-    self.removeListener(type, g);
-    listener.apply(this, arguments);
-  });
-
-  return this;
-};
-
-EventEmitter.prototype.removeListener = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('removeListener only takes instances of Function');
-  }
-
-  // does not use listeners(), so no side effect of creating _events[type]
-  if (!this._events || !this._events[type]) return this;
-
-  var list = this._events[type];
-
-  if (isArray(list)) {
-    var i = list.indexOf(listener);
-    if (i < 0) return this;
-    list.splice(i, 1);
-    if (list.length == 0)
-      delete this._events[type];
-  } else if (this._events[type] === listener) {
-    delete this._events[type];
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  // does not use listeners(), so no side effect of creating _events[type]
-  if (type && this._events && this._events[type]) this._events[type] = null;
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  if (!this._events) this._events = {};
-  if (!this._events[type]) this._events[type] = [];
-  if (!isArray(this._events[type])) {
-    this._events[type] = [this._events[type]];
-  }
-  return this._events[type];
-};
-});
-
 require.define("/examples/graphing/app1.js",function(require,module,exports,__dirname,__filename,process){var DataSlider = require('../');
 var Preloader = require('imagepreloader');
 var Chart = require('chart');
-var Hash = require('hashish');
 var ee = require('events').EventEmitter;
+var lib = require('./util.js');
 var datasource = new ee;
 
 $(window).ready(function() {
@@ -3693,6 +3741,7 @@ $(window).ready(function() {
     var dataslider = new DataSlider;
     dataslider.to(canvas);
     dataslider.onchange(function(params) {
+        $('#status').html("type:" + params.type + " left:" + params.pos.left+ " right:" + params.pos.right);
     });
     var imgset = new Preloader;
     imgset
@@ -3717,57 +3766,12 @@ $(window).ready(function() {
         old.push(newdata);
         return old;
     });
-var rangeY = function(list,specialkey) {
-    // % to top pad so the "peak" isn't at the top of the viewport, but we allow some extra space for better visualization
-//    var padding = 0.10; // 0.10 = 10%;
-    var padding = 0;
-
-    var minY = undefined;
-    var maxY = undefined;
-    for (var i = 0; i < list.length; i++) {
-        Hash(list[i])
-            .filter(function(val,key) { 
-                if (specialkey !== undefined) 
-                    return (key == specialkey) 
-                return (key !== 'date')
-             })
-            .forEach(function(val,key) {
-            if (minY == undefined) 
-                minY = val;
-            if (maxY == undefined)
-                maxY = val;
-            if (val < minY)
-                minY = val;
-            if (val > maxY)
-                maxY = val;
-        });
-    }
-    maxY = (1 + padding)*maxY;
-    var spread = undefined;
-    if ((minY!== undefined) && (maxY !== undefined)) {
-        spread = maxY - minY;
-    }
-    // shift is the amount any value in the interval needs to be shifted by to fall with the interval [0,spread]
-    var shift = undefined;
-    if ((minY < 0) && (maxY >= 0)) {
-        shift = Math.abs(minY);
-    }
-    if ((minY < 0) && (maxY < 0)) {
-        shift = Math.abs(maxY) + Math.abs(minY);
-    }
-    if (minY > 0) {
-        shift = -minY;
-    }
-    if (minY == 0) 
-        shift = 0;
-    return {min:minY,max:maxY,spread:spread,shift:shift}
-};
     dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         ctx.beginPath();
         ctx.moveTo(0,canvas.height);
-        var range = rangeY(old,'y');
+        var range = lib.rangeY(old,'y');
         var step = canvas.width / old.length;
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
