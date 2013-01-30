@@ -11,18 +11,19 @@ $(window).ready(function() {
     var dataslider = new DataSlider;
     dataslider.to(canvas);
     dataslider.onchange(function(params) {
+        var pos = params.pos;
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
         ctx.fillStyle = '#000000';
-        var width = params.pos.right - params.pos.left;
+        var width = pos.right.pos - pos.left.pos;
         var data = dataslider.getData();
         var unitwidth = canvas.width  / data.length;
         var unitsize = focus.width * (unitwidth / width);
         
         ctx.font = Math.round(unitsize) + "px Courier";
         for (var i = 0; i < data.length; i++) {
-            ctx.fillText(data[i],Math.floor(unitsize*i) - (focus.width/width)*(params.pos.left+3),focus.height);
+            ctx.fillText(data[i],Math.floor(unitsize*i) - (focus.width/width)*(pos.left.pos),focus.height);
         }
     });
     var imgset = new Preloader;

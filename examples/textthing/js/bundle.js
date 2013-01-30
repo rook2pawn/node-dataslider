@@ -546,13 +546,16 @@ var DataSlider = function(params) {
     }
     this.draw = function() {
         var params = {pos: 
-        { left: selector.config.left.pos,
-          right: selector.config.right.pos
+        { left: {pos: selector.config.left.pos},
+          right: {pos: selector.config.right.pos}
         }}; 
         panorama.onchange(params);
     };
     this.getData = function(params) {
         return panorama.getLoadedData();
+    };
+    this.getConfig = function() {
+        return selector.config;
     }
     this.setDisplayAddFn = function(fn) {
         panorama.displayaddfn = fn;
@@ -563,6 +566,9 @@ var DataSlider = function(params) {
     this.listen = function(ev,name) {
         ev.on(name,panorama.add.bind({panorama:panorama}));
     };
+    this.thin = function() {
+        panorama.thin();
+    }
 };
 exports = module.exports = DataSlider;
 });
@@ -614,20 +620,20 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
                 vert.config.middle.startx = x;
                 vert.config.left.pos += offset;
                 vert.config.right.pos += offset;
-                vert.action('drag',{left:vert.config.left.pos,right:vert.config.right.pos});
+                vert.action('drag',vert.config);
                 needsDraw = true;
             }
         } else if (vert.config.left.status == 'down') {
             vert.config.left.pos = x;
             $(canvas).addClass('hover');                
             needsDraw = true;
-            vert.action('resize',{left:vert.config.left.pos,right:vert.config.right.pos});
+            vert.action('resize',vert.config);
         } else if (vert.config.right.status == 'down') {
             if (x < canvas.width) {
                 vert.config.right.pos = x;
                 $(canvas).addClass('hover');                
                 needsDraw = true;
-                vert.action('resize',{left:vert.config.left.pos,right:vert.config.right.pos});
+                vert.action('resize',vert.config);
             }
         }
     }
@@ -695,7 +701,7 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
         loaded_data = data;
         this.displayfn = fn;
         this.displayfn(canvas,data);
-    };
+    }
     this.displayaddfn = undefined;
     this.add = function(data) {
         var result = this.panorama.addfn(loaded_data,data);
@@ -705,7 +711,17 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
                 this.panorama.displayaddfn(canvas,loaded_data,data);
             }
         }
-    };
+    }
+    this.thin = function() {
+        var thinned = [];
+        for (var i = 0; i < loaded_data.length; i++) {
+            // todo: improve
+            if (i % 4 != 0) {
+                thinned.push(loaded_data[i]);
+            }
+        }
+        loaded_data = thinned;
+    }
 };
 exports = module.exports = Panorama;
 });
@@ -1047,18 +1063,19 @@ $(window).ready(function() {
     var dataslider = new DataSlider;
     dataslider.to(canvas);
     dataslider.onchange(function(params) {
+        var pos = params.pos;
         var ctx = focusctx;
         ctx.clearRect(0,0,focus.width,focus.height);
         ctx.strokeRect(0,0,focus.width,focus.height);
         ctx.fillStyle = '#000000';
-        var width = params.pos.right - params.pos.left;
+        var width = pos.right.pos - pos.left.pos;
         var data = dataslider.getData();
         var unitwidth = canvas.width  / data.length;
         var unitsize = focus.width * (unitwidth / width);
         
         ctx.font = Math.round(unitsize) + "px Courier";
         for (var i = 0; i < data.length; i++) {
-            ctx.fillText(data[i],Math.floor(unitsize*i) - (focus.width/width)*(params.pos.left+3),focus.height);
+            ctx.fillText(data[i],Math.floor(unitsize*i) - (focus.width/width)*(pos.left.pos),focus.height);
         }
     });
     var imgset = new Preloader;

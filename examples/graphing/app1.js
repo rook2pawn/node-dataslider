@@ -14,9 +14,17 @@ $(window).ready(function() {
     var canvas = document.getElementById('mycanvas');
     var ctx = canvas.getContext('2d');
     var dataslider = new DataSlider;
+
+    // panorama data .. global cross function sad face ><
+    // it is rekeyed across on displayaddfn to store
+    // new locations of where each point lives
+    // and accessed in onchange.
+    var data = []; 
     dataslider.to(canvas);
     dataslider.onchange(function(params) {
-        $('#status').html("type:" + params.type + " left:" + params.pos.left+ " right:" + params.pos.right);
+        var pos = params.pos;
+        var indices = lib.getIndices(data,pos);
+        //console.log(indices);
     });
     var imgset = new Preloader;
     imgset
@@ -32,9 +40,6 @@ $(window).ready(function() {
         .error(function(msg) { console.log("Error:" + msg) })
         .done();
     dataslider.load([], function(canvas,data){
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle='#FF0000';
-        ctx.fillRect(0,0,20,20);
     });
     dataslider.listen(datasource,'data');    
     dataslider.setAddFn(function(old,newdata) {
@@ -42,15 +47,28 @@ $(window).ready(function() {
         return old;
     });
     dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
+        if (old.length > 50) {
+            dataslider.thin();
+            old = dataslider.getData();
+        }
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         ctx.beginPath();
-        ctx.moveTo(0,canvas.height);
         var range = lib.rangeY(old,'y');
         var step = canvas.width / old.length;
+        data = [];
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
-            ctx.lineTo(Math.floor(i*step),Math.floor(canvas.height - normalized));
+            var obj = {};
+            obj.x = Math.floor(i*step);
+            obj.y = Math.floor(canvas.height - normalized);
+            data.push(obj);
+            if (i === 0) {
+                ctx.moveTo(obj.x,obj.y)
+            } else {
+                ctx.lineTo(obj.x,obj.y);
+            }
+
         }
         ctx.lineTo(canvas.width,canvas.height);
         ctx.lineTo(0,canvas.height);
@@ -58,10 +76,28 @@ $(window).ready(function() {
         ctx.fill();
         ctx.strokeStyle = '#517ea5';
         ctx.stroke();
+        // dots
+        for (var i = 0; i < old.length; i++) {
+            var normalized = (old[i].y / range.max) * canvas.height;
+            var obj = {};
+            obj.x = Math.floor(i*step);
+            obj.y = Math.floor(canvas.height - normalized);
+            ctx.beginPath();
+            ctx.arc(obj.x,obj.y, 3, 0, Math.PI*2, false);
+            ctx.stroke();
+        }
+        // find out UI.left -> data[i]  and UI.right -> data[j]
+        var pos = dataslider.getConfig(); 
+        var indices = lib.getIndices(data,pos);
+        //console.log(indices);
+        
     });
-
+    var idx = 0;
+    var step = 0.1;
     setInterval(function() {
-        var random = Math.floor(Math.random()*200);
+//        var random = Math.floor(Math.random()*200);
+        var random = Math.abs(Math.floor(Math.sin(Math.PI*(idx+step))*100));
+        idx += step;
         datasource.emit('data',{y:random});
     },1000);
 });

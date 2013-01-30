@@ -44,3 +44,18 @@ exports.rangeY = function(list,specialkey) {
         shift = 0;
     return {min:minY,max:maxY,spread:spread,shift:shift}
 };
+exports.getIndices = function(data,pos) {
+    $('#status').html("left:" + pos.left.pos + " right:" + pos.right.pos);
+    var l_index = undefined;
+    var r_index = undefined;
+    for (var i= 0; i < data.length; i++) {
+        if ((data[i].x >= pos.left.pos) && (l_index === undefined)) {
+            l_index = i;
+        }     
+        if ((data[i].x >=pos.right.pos) && (r_index === undefined)) {
+            r_index = i-1;
+            break;
+        }
+    }
+    return {left:l_index,right:r_index}
+}

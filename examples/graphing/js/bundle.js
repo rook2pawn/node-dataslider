@@ -546,13 +546,16 @@ var DataSlider = function(params) {
     }
     this.draw = function() {
         var params = {pos: 
-        { left: selector.config.left.pos,
-          right: selector.config.right.pos
+        { left: {pos: selector.config.left.pos},
+          right: {pos: selector.config.right.pos}
         }}; 
         panorama.onchange(params);
     };
     this.getData = function(params) {
         return panorama.getLoadedData();
+    };
+    this.getConfig = function() {
+        return selector.config;
     }
     this.setDisplayAddFn = function(fn) {
         panorama.displayaddfn = fn;
@@ -563,6 +566,9 @@ var DataSlider = function(params) {
     this.listen = function(ev,name) {
         ev.on(name,panorama.add.bind({panorama:panorama}));
     };
+    this.thin = function() {
+        panorama.thin();
+    }
 };
 exports = module.exports = DataSlider;
 });
@@ -614,20 +620,20 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
                 vert.config.middle.startx = x;
                 vert.config.left.pos += offset;
                 vert.config.right.pos += offset;
-                vert.action('drag',{left:vert.config.left.pos,right:vert.config.right.pos});
+                vert.action('drag',vert.config);
                 needsDraw = true;
             }
         } else if (vert.config.left.status == 'down') {
             vert.config.left.pos = x;
             $(canvas).addClass('hover');                
             needsDraw = true;
-            vert.action('resize',{left:vert.config.left.pos,right:vert.config.right.pos});
+            vert.action('resize',vert.config);
         } else if (vert.config.right.status == 'down') {
             if (x < canvas.width) {
                 vert.config.right.pos = x;
                 $(canvas).addClass('hover');                
                 needsDraw = true;
-                vert.action('resize',{left:vert.config.left.pos,right:vert.config.right.pos});
+                vert.action('resize',vert.config);
             }
         }
     }
@@ -695,7 +701,7 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
         loaded_data = data;
         this.displayfn = fn;
         this.displayfn(canvas,data);
-    };
+    }
     this.displayaddfn = undefined;
     this.add = function(data) {
         var result = this.panorama.addfn(loaded_data,data);
@@ -705,7 +711,17 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
                 this.panorama.displayaddfn(canvas,loaded_data,data);
             }
         }
-    };
+    }
+    this.thin = function() {
+        var thinned = [];
+        for (var i = 0; i < loaded_data.length; i++) {
+            // todo: improve
+            if (i % 4 != 0) {
+                thinned.push(loaded_data[i]);
+            }
+        }
+        loaded_data = thinned;
+    }
 };
 exports = module.exports = Panorama;
 });
@@ -987,6 +1003,7 @@ exports.setSource = function(source) {
 
         var windowsize = source.windowsize || data.windowsize || 10;
         var datatodisplay = util.cropData(source.dataset,windowsize);
+//        console.log(source.dataset);
         var startx = util.getStartX(datatodisplay.length,windowsize,this.canvas.width); 
         var spacing = util.getSpacing(windowsize,this.canvas.width);
 
@@ -2711,7 +2728,6 @@ var updateHTML = function(params) {
         return;
     }
     var el = params.el;
-//    $(this.legend).css('height',Object.keys(axishash).length * 30);
     Object.keys(axishash).forEach(function(axis) {
         if (axishash[axis].newarrival === true) {
             var legendlinestring = 'vertical-align:middle;display:inline-block;width:20px;border:thin solid '+colorToString(axishash[axis].color);
@@ -2721,10 +2737,13 @@ var updateHTML = function(params) {
                 .append('<div class="legend" id="'+legendid+'"><input type=checkbox checked></input><div style="'+axisstring+'" class="axisname">' + axis + '</div><hr style="'+ legendlinestring+'" class="legendline" /></div>')
                 .css('font-family','sans-serif');
             $('#'+legendid+' input[type="checkbox"]').click(function() {
-                var legendname = rack.get(legendid.slice(1));
-                axishash[legendname].display = !axishash[legendname].display; // toggle boolean
-                $(this).attr('checked',axishash[legendname].display);
-                util.redraw({yaxises:axishash});  
+                //
+                //if ($('.legend input[type="checkbox"]:checked').length > 1) {
+                    var legendname = rack.get(legendid.slice(1));
+                    axishash[legendname].display = !axishash[legendname].display; // toggle boolean
+                    $(this).attr('checked',axishash[legendname].display);
+                    util.redraw({yaxises:axishash});  
+               // }
             });
         }
     },this);
@@ -3150,6 +3169,21 @@ exports.rangeY = function(list,specialkey) {
         shift = 0;
     return {min:minY,max:maxY,spread:spread,shift:shift}
 };
+exports.getIndices = function(data,pos) {
+    $('#status').html("left:" + pos.left.pos + " right:" + pos.right.pos);
+    var l_index = undefined;
+    var r_index = undefined;
+    for (var i= 0; i < data.length; i++) {
+        if ((data[i].x >= pos.left.pos) && (l_index === undefined)) {
+            l_index = i;
+        }     
+        if ((data[i].x >=pos.right.pos) && (r_index === undefined)) {
+            r_index = i-1;
+            break;
+        }
+    }
+    return {left:l_index,right:r_index}
+}
 });
 
 require.define("/node_modules/hashish/package.json",function(require,module,exports,__dirname,__filename,process){module.exports = {"main":"./index.js"}});
@@ -3739,9 +3773,17 @@ $(window).ready(function() {
     var canvas = document.getElementById('mycanvas');
     var ctx = canvas.getContext('2d');
     var dataslider = new DataSlider;
+
+    // panorama data .. global cross function sad face ><
+    // it is rekeyed across on displayaddfn to store
+    // new locations of where each point lives
+    // and accessed in onchange.
+    var data = []; 
     dataslider.to(canvas);
     dataslider.onchange(function(params) {
-        $('#status').html("type:" + params.type + " left:" + params.pos.left+ " right:" + params.pos.right);
+        var pos = params.pos;
+        var indices = lib.getIndices(data,pos);
+        //console.log(indices);
     });
     var imgset = new Preloader;
     imgset
@@ -3757,9 +3799,6 @@ $(window).ready(function() {
         .error(function(msg) { console.log("Error:" + msg) })
         .done();
     dataslider.load([], function(canvas,data){
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle='#FF0000';
-        ctx.fillRect(0,0,20,20);
     });
     dataslider.listen(datasource,'data');    
     dataslider.setAddFn(function(old,newdata) {
@@ -3767,15 +3806,28 @@ $(window).ready(function() {
         return old;
     });
     dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
+        if (old.length > 50) {
+            dataslider.thin();
+            old = dataslider.getData();
+        }
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height); 
         ctx.beginPath();
-        ctx.moveTo(0,canvas.height);
         var range = lib.rangeY(old,'y');
         var step = canvas.width / old.length;
+        data = [];
         for (var i = 0; i < old.length; i++) {
             var normalized = (old[i].y / range.max) * canvas.height;
-            ctx.lineTo(Math.floor(i*step),Math.floor(canvas.height - normalized));
+            var obj = {};
+            obj.x = Math.floor(i*step);
+            obj.y = Math.floor(canvas.height - normalized);
+            data.push(obj);
+            if (i === 0) {
+                ctx.moveTo(obj.x,obj.y)
+            } else {
+                ctx.lineTo(obj.x,obj.y);
+            }
+
         }
         ctx.lineTo(canvas.width,canvas.height);
         ctx.lineTo(0,canvas.height);
@@ -3783,10 +3835,28 @@ $(window).ready(function() {
         ctx.fill();
         ctx.strokeStyle = '#517ea5';
         ctx.stroke();
+        // dots
+        for (var i = 0; i < old.length; i++) {
+            var normalized = (old[i].y / range.max) * canvas.height;
+            var obj = {};
+            obj.x = Math.floor(i*step);
+            obj.y = Math.floor(canvas.height - normalized);
+            ctx.beginPath();
+            ctx.arc(obj.x,obj.y, 3, 0, Math.PI*2, false);
+            ctx.stroke();
+        }
+        // find out UI.left -> data[i]  and UI.right -> data[j]
+        var pos = dataslider.getConfig(); 
+        var indices = lib.getIndices(data,pos);
+        //console.log(indices);
+        
     });
-
+    var idx = 0;
+    var step = 0.1;
     setInterval(function() {
-        var random = Math.floor(Math.random()*200);
+//        var random = Math.floor(Math.random()*200);
+        var random = Math.abs(Math.floor(Math.sin(Math.PI*(idx+step))*100));
+        idx += step;
         datasource.emit('data',{y:random});
     },1000);
 });

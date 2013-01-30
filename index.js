@@ -73,13 +73,16 @@ var DataSlider = function(params) {
     }
     this.draw = function() {
         var params = {pos: 
-        { left: selector.config.left.pos,
-          right: selector.config.right.pos
+        { left: {pos: selector.config.left.pos},
+          right: {pos: selector.config.right.pos}
         }}; 
         panorama.onchange(params);
     };
     this.getData = function(params) {
         return panorama.getLoadedData();
+    };
+    this.getConfig = function() {
+        return selector.config;
     }
     this.setDisplayAddFn = function(fn) {
         panorama.displayaddfn = fn;
@@ -90,5 +93,8 @@ var DataSlider = function(params) {
     this.listen = function(ev,name) {
         ev.on(name,panorama.add.bind({panorama:panorama}));
     };
+    this.thin = function() {
+        panorama.thin();
+    }
 };
 exports = module.exports = DataSlider;
