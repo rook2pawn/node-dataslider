@@ -623,12 +623,12 @@ require.define("/lib/mouselib.js",function(require,module,exports,__dirname,__fi
                 vert.action('drag',vert.config);
                 needsDraw = true;
             }
-        } else if (vert.config.left.status == 'down') {
+        } else if ((vert.config.left.status == 'down') && (x+vert.config.right.width <= vert.config.right.pos)) {
             vert.config.left.pos = x;
             $(canvas).addClass('hover');                
             needsDraw = true;
             vert.action('resize',vert.config);
-        } else if (vert.config.right.status == 'down') {
+        } else if ((vert.config.right.status == 'down') && (x-vert.config.left.width >= vert.config.left.pos)) {
             if (x < canvas.width) {
                 vert.config.right.pos = x;
                 $(canvas).addClass('hover');                
@@ -714,12 +714,12 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     }
     this.thin = function() {
         var thinned = [];
-        for (var i = 0; i < loaded_data.length; i++) {
-            // todo: improve
-            if (i % 4 != 0) {
-                thinned.push(loaded_data[i]);
-            }
+        thinned.push(loaded_data[0]);
+        for (var i = 1; i < loaded_data.length -1; i++) {
+            if (i % 2 === 0) 
+            thinned.push(loaded_data[i]);
         }
+        thinned.push(loaded_data[loaded_data.length - 1]);
         loaded_data = thinned;
     }
 };

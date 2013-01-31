@@ -8,6 +8,18 @@ var datasource = new ee;
 $(window).ready(function() {
     var chart = new Chart;
     chart.series(datasource);
+    var myCropData = function(list,windowsize,boundaries) {
+        if (list.length < windowsize)
+            return list
+        var indices = lib.getIndicesByTimestamp(list,boundaries);
+        var newlist =  list.slice(indices.left);
+        if (newlist.length > windowsize) {
+            return newlist.slice(0,windowsize);
+        } else
+            return newlist;
+    };
+    chart.custom.cropFn = myCropData;
+
     var focus = document.getElementById('focus');
     chart.to(focus);
     var focusctx = focus.getContext('2d');
@@ -43,8 +55,10 @@ $(window).ready(function() {
     });
     dataslider.onchange(function(params) {
         var pos = params.pos;
+/*
         var indices = lib.getIndices(data,pos);
         $('#data').html('Left:' + indices.left + ' right:' + indices.right);
+*/
     });
     dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
         if (old.length > 50) {
@@ -65,6 +79,7 @@ $(window).ready(function() {
             var obj = {};
             obj.x = Math.floor(i*step);
             obj.y = Math.floor(canvas.height - normalized);
+            obj.date = old[i].date;
             data.push(obj);
             ctx.lineTo(obj.x,obj.y);
         }
@@ -88,7 +103,11 @@ $(window).ready(function() {
         // find out UI.left -> data[i]  and UI.right -> data[j]
         var pos = dataslider.getConfig(); 
         var indices = lib.getIndices(data,pos);
-        $('#data').html('Left:' + indices.left + ' right:' + indices.right);
+        chart.custom.boundaries.left = indices.left;
+        chart.custom.boundaries.right = indices.right;
+        var ldate = lib.getDateString(indices.left);
+        var rdate = lib.getDateString(indices.right);
+        $('#data').html('Left:' + ldate + ' right:' + rdate);
         
     });
     var idx = 0;

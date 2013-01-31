@@ -714,12 +714,12 @@ require.define("/lib/panorama.js",function(require,module,exports,__dirname,__fi
     }
     this.thin = function() {
         var thinned = [];
-        for (var i = 0; i < loaded_data.length; i++) {
-            // todo: improve
-            if (i % 4 != 0) {
-                thinned.push(loaded_data[i]);
-            }
+        thinned.push(loaded_data[0]);
+        for (var i = 1; i < loaded_data.length -1; i++) {
+            if (i % 2 === 0) 
+            thinned.push(loaded_data[i]);
         }
+        thinned.push(loaded_data[loaded_data.length - 1]);
         loaded_data = thinned;
     }
 };
@@ -938,6 +938,8 @@ var chart = function() {
     this.bgcolor = undefined;
     this.color = {grid:'#c9d6de',bg:'#FFF',xlabel:'#000',xline:'#000',ylabel:'#000',yline:'#000',interactionline:'#000',line:undefined};
     this.rendermode = "line"; // linefill, line, bar 
+    
+    this.custom = {boundaries : {left:undefined,right:undefined}, cropFn : undefined};
 };
 exports = module.exports = chart;
 });
@@ -993,7 +995,7 @@ exports.setSource = function(source) {
     $(this.canvas).before(this.buffer[id]);
     var onDataGraph = function(data,flags) {
         // timestamp
-        data.date = new Date();
+        data.date = new Date().getTime(); // actual timestamp
 
         if ((source.dataset === undefined) || (flags && (flags.multiple == true) && (flags.clear && flags.clear == true))) {
             source.dataset = [];
@@ -1002,7 +1004,7 @@ exports.setSource = function(source) {
         source.dataset.push(data); 
 
         var windowsize = source.windowsize || data.windowsize || 10;
-        var datatodisplay = util.cropData(source.dataset,windowsize);
+        var datatodisplay = (this.custom.cropFn) ? this.custom.cropFn(source.dataset,windowsize,this.custom.boundaries) : util.cropData(source.dataset,windowsize);
         var startx = util.getStartX(datatodisplay.length,windowsize,this.canvas.width); 
         var spacing = util.getSpacing(windowsize,this.canvas.width);
 
@@ -1094,7 +1096,9 @@ exports.drawHorizontalGrid = function(width,height,ctx,color){
         ctx.stroke();
     }
 }
-var getDateString = function(date) {
+var getDateString = function(ms) {
+    var date = new Date(ms);
+
     var pad = function(str) {
         if (str.length == 1) 
             return '0'.concat(str)
@@ -3168,21 +3172,56 @@ exports.rangeY = function(list,specialkey) {
         shift = 0;
     return {min:minY,max:maxY,spread:spread,shift:shift}
 };
-exports.getIndices = function(data,pos) {
-    $('#status').html("left:" + pos.left.pos + " right:" + pos.right.pos);
+// getIndicesByTimestamp
+exports.getIndicesByTimestamp = function(data,boundaries) {
     var l_index = undefined;
     var r_index = undefined;
     for (var i= 0; i < data.length; i++) {
-        if ((data[i].x >= pos.left.pos) && (l_index === undefined)) {
+        if ((data[i].date >= boundaries.left) && (l_index === undefined)) {
             l_index = i;
         }     
-        if ((data[i].x >=pos.right.pos) && (r_index === undefined)) {
+        if ((data[i].date >= boundaries.right) && (r_index === undefined)) {
             r_index = i-1;
             break;
         }
     }
     return {left:l_index,right:r_index}
 }
+// getIndicesByDisplayX 
+exports.getIndices = function(data,pos) {
+    $('#status').html("left:" + pos.left.pos + " right:" + pos.right.pos);
+    var l_ms = undefined;
+    var r_ms = undefined;
+    for (var i= 0; i < data.length; i++) {
+        if ((data[i].x >= pos.left.pos) && (l_ms === undefined)) {
+            l_ms = data[i].date;
+        }     
+        if ((data[i].x >=pos.right.pos) && (r_ms === undefined)) {
+            r_ms = data[i-1].date;
+            break;
+        }
+    }
+    return {left:l_ms,right:r_ms}
+}
+exports.getDateString = function(ms) {
+    var date = new Date(ms);
+
+    var pad = function(str) {
+        if (str.length == 1) 
+            return '0'.concat(str)
+        if (str.length === 0) 
+            return '00'
+        else 
+            return str
+    };  
+    var hours = date.getHours() % 12;
+    if (hours === 0) 
+        hours = '12';
+    var seconds = pad(date.getSeconds());
+    var minutes = pad(date.getMinutes());
+    var meridian = date.getHours() >= 12 ? 'pm' : 'am';
+    return hours +':'.concat(minutes) + ':'.concat(seconds) + meridian;
+};
 });
 
 require.define("/node_modules/hashish/package.json",function(require,module,exports,__dirname,__filename,process){module.exports = {"main":"./index.js"}});
@@ -3766,6 +3805,18 @@ var datasource = new ee;
 $(window).ready(function() {
     var chart = new Chart;
     chart.series(datasource);
+    var myCropData = function(list,windowsize,boundaries) {
+        if (list.length < windowsize)
+            return list
+        var indices = lib.getIndicesByTimestamp(list,boundaries);
+        var newlist =  list.slice(indices.left);
+        if (newlist.length > windowsize) {
+            return newlist.slice(0,windowsize);
+        } else
+            return newlist;
+    };
+    chart.custom.cropFn = myCropData;
+
     var focus = document.getElementById('focus');
     chart.to(focus);
     var focusctx = focus.getContext('2d');
@@ -3801,8 +3852,10 @@ $(window).ready(function() {
     });
     dataslider.onchange(function(params) {
         var pos = params.pos;
+/*
         var indices = lib.getIndices(data,pos);
         $('#data').html('Left:' + indices.left + ' right:' + indices.right);
+*/
     });
     dataslider.setDisplayAddFn(function(canvas,old,newdata) { 
         if (old.length > 50) {
@@ -3823,6 +3876,7 @@ $(window).ready(function() {
             var obj = {};
             obj.x = Math.floor(i*step);
             obj.y = Math.floor(canvas.height - normalized);
+            obj.date = old[i].date;
             data.push(obj);
             ctx.lineTo(obj.x,obj.y);
         }
@@ -3846,7 +3900,11 @@ $(window).ready(function() {
         // find out UI.left -> data[i]  and UI.right -> data[j]
         var pos = dataslider.getConfig(); 
         var indices = lib.getIndices(data,pos);
-        $('#data').html('Left:' + indices.left + ' right:' + indices.right);
+        chart.custom.boundaries.left = indices.left;
+        chart.custom.boundaries.right = indices.right;
+        var ldate = lib.getDateString(indices.left);
+        var rdate = lib.getDateString(indices.right);
+        $('#data').html('Left:' + ldate + ' right:' + rdate);
         
     });
     var idx = 0;
