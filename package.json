@@ -3,10 +3,22 @@
   "version": "0.0.1",
   "description": "view your data according to a slider",
   "main": "index.js",
+  "homepage": "https://github.com/rook2pawn/node-dataslider",
+  "keywords" : [
+    "UI",
+    "slider",
+    "data",
+    "canvas"
+   ],
   "repository": {
     "type": "git",
     "url": "git://github.com/rook2pawn/node-dataslider.git"
   },
   "author": "David Wee <rook2pawn@gmail.com> (http://rook2pawn.com)",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies" : {
+    "chart" : "",
+    "hashish" : "",
+    "imagepreloader" : ""
+  }
 }
