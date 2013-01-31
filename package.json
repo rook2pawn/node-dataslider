@@ -1,12 +1,12 @@
 {
   "name": "dataslider",
-  "version": "0.0.0",
-  "description": "ERROR: No README.md file found!",
+  "version": "0.0.1",
+  "description": "view your data according to a slider",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rook2pawn/node-dataslider.git"
   },
-  "repository": "",
-  "author": "",
-  "license": "BSD"
+  "author": "David Wee <rook2pawn@gmail.com> (http://rook2pawn.com)",
+  "license": "MIT"
 }
