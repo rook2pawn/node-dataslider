@@ -605,6 +605,9 @@ var DataSlider = function(params) {
     this.listen = function(ev,name) {
         ev.on(name,panorama.add.bind({panorama:panorama}));
     };
+    this.setstatecb = function(cb) {
+        positionbar.statecb = cb; 
+    }
     this.thin = function() {
         panorama.thin();
     }
@@ -865,7 +868,7 @@ require.define("/lib/positionbar.js",function(require,module,exports,__dirname,_
     lineargradient.addColorStop(0,'#CCC');
     lineargradient.addColorStop(1,'white');
 
-    var state = 'pause_light.png';
+    var state = 'play_light.png';
     this.hash = {};
     var mousedown = function(ev) {
         var offset = $(canvas).offset();
@@ -873,10 +876,13 @@ require.define("/lib/positionbar.js",function(require,module,exports,__dirname,_
         var y = ev.pageY - offset.top;
         var oldstate = state;
         if ((x >= 2) && (x <= 18)) {
-            if (state !== 'play.png') 
+            if (state !== 'play.png') {
                 state = 'play.png';
-            else 
-                state = 'pause.png'
+                this.setstate('play');
+            } else {
+                state = 'pause.png';
+                this.setstate('pause');
+            }
         }
         if (oldstate !== state) {
             ctx.clearRect(2,2,16,16);
@@ -901,8 +907,10 @@ require.define("/lib/positionbar.js",function(require,module,exports,__dirname,_
         }
         if ((x >= 2) && (x <= 18)) {
             state = 'pause.png';
+            this.setstate('pause');
         } else {
             state = 'pause_light.png';
+            this.setstate('pause');
         }
         if (oldstate !== state) {
             ctx.clearRect(2,2,16,16);
@@ -923,8 +931,17 @@ require.define("/lib/positionbar.js",function(require,module,exports,__dirname,_
         var right = config.right.pos;
         if ((left !== undefined) && (right !== undefined))
             return Math.round((left + right) / 2)
+    };
+    var _state = 'play';
+    this.setstate = function(newstate) {
+        if (_state !== newstate) 
+            this.statecb(newstate);
+        _state = newstate;
     }
-
+    this.getstate = function() {
+        return _state;
+    }
+    this.statecb = undefined;
     this.draw = function() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         var center = getCenter();
@@ -3953,6 +3970,9 @@ $(window).ready(function() {
     // and accessed in onchange.
     var data = []; 
     dataslider.to(canvas);
+    dataslider.setstatecb(function(state) {
+        console.log("STATEIS :" + state);
+    });
     dataslider.load([], function(canvas,data){
     });
     dataslider.listen(datasource,'data');    

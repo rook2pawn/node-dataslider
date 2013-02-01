@@ -32,6 +32,9 @@ $(window).ready(function() {
     // and accessed in onchange.
     var data = []; 
     dataslider.to(canvas);
+    dataslider.setstatecb(function(state) {
+        console.log("STATEIS :" + state);
+    });
     dataslider.load([], function(canvas,data){
     });
     dataslider.listen(datasource,'data');    

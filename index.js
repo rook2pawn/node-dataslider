@@ -132,6 +132,9 @@ var DataSlider = function(params) {
     this.listen = function(ev,name) {
         ev.on(name,panorama.add.bind({panorama:panorama}));
     };
+    this.setstatecb = function(cb) {
+        positionbar.statecb = cb; 
+    }
     this.thin = function() {
         panorama.thin();
     }
