@@ -33,6 +33,10 @@ $(window).ready(function() {
     var data = []; 
     dataslider.to(canvas);
     dataslider.setstatecb(function(state) {
+        if (state == 'pause') 
+            chart.pause = true;
+        else 
+            chart.pause = false;
         console.log("STATEIS :" + state);
     });
     dataslider.load([], function(canvas,data){
