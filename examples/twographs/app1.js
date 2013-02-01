@@ -1,4 +1,5 @@
 var DataSlider = require('../');
+var Preloader = require('imagepreloader');
 var Chart = require('chart');
 var ee = require('events').EventEmitter;
 var lib = require('./util.js');
@@ -32,6 +33,19 @@ $(window).ready(function() {
     // and accessed in onchange.
     var data = []; 
     dataslider.to(canvas);
+    var imgset = new Preloader;
+    imgset
+        .add('img/selector_left.png')
+        .add('img/selector_right.png')
+        .add('img/selector_left_hover.png')
+        .add('img/selector_right_hover.png')
+        .add('img/selector_left_down.png')
+        .add('img/selector_right_down.png')
+        .success(function(images) {
+            dataslider.setImages(images);
+        })
+        .error(function(msg) { console.log("Error:" + msg) })
+        .done();
     dataslider.load([], function(canvas,data){
     });
     dataslider.listen(datasource,'data');    
@@ -99,9 +113,9 @@ $(window).ready(function() {
     var idx = 0;
     var step = 0.1;
     setInterval(function() {
-//        var random = Math.floor(Math.random()*200);
         var random = Math.abs(Math.floor(Math.sin(Math.PI*(idx+step))*100));
+        var random2 = Math.floor(Math.random()*200);
         idx += step;
-        datasource.emit('data',{y:random});
+        datasource.emit('data',{x:random,y:random2});
     },1000);
 });

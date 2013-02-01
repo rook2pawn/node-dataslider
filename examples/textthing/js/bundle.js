@@ -474,6 +474,8 @@ require.define("/package.json",function(require,module,exports,__dirname,__filen
 require.define("/index.js",function(require,module,exports,__dirname,__filename,process){var mouselib = require('./lib/mouselib');
 var Panorama = require('./lib/panorama');
 var Selector = require('./lib/selector');
+var PositionBar = require('./lib/positionbar');
+var Preloader = require('imagepreloader');
 
 var DataSlider = function(params) {
     if (params === undefined)
@@ -484,17 +486,54 @@ var DataSlider = function(params) {
 
     var panorama_canvas = undefined;
     var selector_canvas = undefined;
+    var positionbar_canvas = undefined;
     var selector = undefined;
     var panorama = undefined;
+    var positionbar = undefined;
+    var createPositionBar = function(canvas) {
+        var bar = new PositionBar({canvas:canvas,selector:selector});
+        var imgset = new Preloader;
+        imgset
+            .add('img/play.png')
+            .add('img/play_light.png')
+            .add('img/pause.png')
+            .add('img/pause_light.png')
+            .add('img/positionbar.png')
+            .success(function(images) { 
+                bar.setImages(images);
+                bar.draw();
+            })
+            .error(function(msg) {
+                console.log(msg)
+            })
+            .done();
+        return bar;
+    };
     var createPanorama = function(canvas) {
         return new Panorama({canvas:canvas});
     };
     var createSelector = function(canvas) {
-        return new Selector({canvas:canvas});
+        var sel = new Selector({canvas:canvas});  
+        var imgset = new Preloader;
+        imgset
+            .add('img/selector_left.png')
+            .add('img/selector_right.png')
+            .add('img/selector_left_hover.png')
+            .add('img/selector_right_hover.png')
+            .add('img/selector_left_down.png')
+            .add('img/selector_right_down.png')
+            .success(function(images) {
+                sel.setImages(images);
+                sel.draw();
+            })
+            .error(function(msg) { console.log("Error:" + msg) })
+            .done();
+        return sel;
     };
+
     var wrapDiv = function(canvas) {
         var wrappingDiv = document.createElement('div');
-        $(wrappingDiv).css('position','relative').css('width',canvas.width).css('height',canvas.height);
+        $(wrappingDiv).css('position','relative').css('width',canvas.width).css('height',2*canvas.height);
         wrappingDiv.id = 'dataslider_div';
         wrappingDiv.height = canvas.height;
         $(canvas).wrap(wrappingDiv);
@@ -505,7 +544,6 @@ var DataSlider = function(params) {
         $(canvas).mouseup(mouselib.mouseup.bind({vert:selector,canvas:canvas}));
         $(canvas).mouseout(mouselib.mouseout.bind({vert:selector,canvas:canvas}));
     };
-
     this.to = function(canvasobj) {
         panorama_canvas = canvasobj;
         $(panorama_canvas).css('position','absolute');
@@ -517,21 +555,22 @@ var DataSlider = function(params) {
         selector_canvas.width = panorama_canvas.width; selector_canvas.height = panorama_canvas.height;
         $(panorama_canvas).after(selector_canvas);
 
+        positionbar_canvas = document.createElement('canvas');
+        $(positionbar_canvas).css('position','absolute').css('top',panorama_canvas.height);
+        positionbar_canvas.width = panorama_canvas.width; positionbar_canvas.height = panorama_canvas.height;  
+        $(panorama_canvas).after(positionbar_canvas);
+
         selector = createSelector(selector_canvas);
         panorama = createPanorama(panorama_canvas);
+        positionbar = createPositionBar(positionbar_canvas);
         setMouse(selector,selector_canvas);
         if (onchange !== undefined) 
             panorama.onchange = onchange;
         selector.cb = function(params) {
+            positionbar.draw();
             panorama.onchange(params);
         }
     }
-    this.setImages = function(images) {
-        if (selector !== undefined) {
-            selector.setImages(images);
-            selector.draw();
-        }
-    };
     this.load = function(data,fn) {
         panorama.load(data,fn);
     }
@@ -761,7 +800,7 @@ require.define("/lib/selector.js",function(require,module,exports,__dirname,__fi
     };
     this.draw = function() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        // drag inside rect first
+        // draggable area rectangle first between posts
         ctx.fillStyle='rgba(211,255,255,0.5)';
         ctx.fillRect(config.left.pos,0,(config.right.pos - config.left.pos),canvas.height);
         ctx.fill();
@@ -816,6 +855,88 @@ require.define("/lib/selector.js",function(require,module,exports,__dirname,__fi
     };
 };
 exports = module.exports = Selector;
+});
+
+require.define("/lib/positionbar.js",function(require,module,exports,__dirname,__filename,process){var PositionBar = function(params) {
+    var canvas = params.canvas;
+    var ctx = canvas.getContext('2d');
+    var selector = params.selector;
+    var lineargradient = ctx.createLinearGradient(0,0,0,17);
+    lineargradient.addColorStop(0,'#CCC');
+    lineargradient.addColorStop(1,'white');
+
+    var state = 'pause_light.png';
+    this.hash = {};
+    var mousedown = function(ev) {
+        var offset = $(canvas).offset();
+        var x = ev.pageX - offset.left;
+        var y = ev.pageY - offset.top;
+        var oldstate = state;
+        if ((x >= 2) && (x <= 18)) {
+            if (state !== 'play.png') 
+                state = 'play.png';
+            else 
+                state = 'pause.png'
+        }
+        if (oldstate !== state) {
+            ctx.clearRect(2,2,16,16);
+            ctx.drawImage(this.hash[state],2,2,16,16);
+        }
+    }
+    var mousemove = function(ev) {
+        var offset = $(canvas).offset();
+        var x = ev.pageX - offset.left;
+        var y = ev.pageY - offset.top;
+        var oldstate = state;
+        if ((state == 'play.png') || (state == 'play_light.png')) {
+            if ((x >= 2) && (x <= 18)) {
+                state = 'play.png';
+            } else
+                state = 'play_light.png';
+            if (oldstate !== state) {
+                ctx.clearRect(2,2,16,16);
+                ctx.drawImage(this.hash[state],2,2,16,16);
+            }
+            return
+        }
+        if ((x >= 2) && (x <= 18)) {
+            state = 'pause.png';
+        } else {
+            state = 'pause_light.png';
+        }
+        if (oldstate !== state) {
+            ctx.clearRect(2,2,16,16);
+            ctx.drawImage(this.hash[state],2,2,16,16);
+        }
+    }
+    $(canvas).mousemove(mousemove.bind(this));
+    $(canvas).mousedown(mousedown.bind(this));
+    this.setImages = function(images) {
+        var that = this;
+        images.forEach(function(img) {
+            this.hash[img.name] = img;
+        },that);
+    }
+    var getCenter = function() {
+        var config  = selector.config;
+        var left = config.left.pos;
+        var right = config.right.pos;
+        if ((left !== undefined) && (right !== undefined))
+            return Math.round((left + right) / 2)
+    }
+
+    this.draw = function() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        var center = getCenter();
+        var x = center - (this.hash['positionbar.png'].width / 2);
+        ctx.fillStyle = lineargradient;
+        ctx.fillRect(0,0,canvas.width,17);
+        ctx.clearRect(2,2,16,16);
+        ctx.drawImage(this.hash['positionbar.png'],x,2);
+        ctx.drawImage(this.hash[state],2,2,16,16);
+    }; 
+};
+exports = module.exports = PositionBar;
 });
 
 require.define("/node_modules/imagepreloader/package.json",function(require,module,exports,__dirname,__filename,process){module.exports = {"main":"index.js"}});
